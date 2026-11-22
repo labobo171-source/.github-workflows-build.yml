@@ -344,7 +344,6 @@ jobs:
                   try {
                       setMediaNotificationProvider(
                           DefaultMediaNotificationProvider.Builder(this)
-                              .setSmallIcon(R.drawable.ic_note)
                               .build()
                       )
                   } catch (_: Throwable) { }
@@ -415,6 +414,8 @@ jobs:
           import androidx.compose.ui.geometry.Size
           import androidx.compose.ui.graphics.Brush
           import androidx.compose.ui.graphics.Color
+          import androidx.compose.ui.graphics.Path
+          import androidx.compose.ui.graphics.drawscope.Stroke
           import androidx.compose.ui.graphics.drawscope.DrawScope
           import androidx.compose.ui.graphics.graphicsLayer
           import androidx.compose.ui.unit.Dp
@@ -648,7 +649,7 @@ jobs:
                       val n = 32; val bw = w / n
                       for (i in 0 until n) {
                           val hBar = h * (0.08f + ((sin(phase * 2f + i * 0.42f) + 1f) / 2f) * 0.52f
-                              + (s.bands.getOrElse(i % s.bands.size) / 100f).coerceIn(-0.06f,0.12f))
+                              + (s.bands.getOrElse(i % s.bands.size) { 0f } / 100f).coerceIn(-0.06f,0.12f))
                           drawRoundRect(p.a.copy(alpha = 0.45f), Offset(i*bw + bw*0.2f,h-hBar),
                               Size(bw*0.6f,hBar), cornerRadius = CornerRadius(bw/2,bw/2))
                       }
