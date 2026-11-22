@@ -1304,10 +1304,21 @@ jobs:
                                           Spectrum(p, s, info.freqs, playing, Modifier.fillMaxWidth().height(56.dp))
                                           Spacer(Modifier.height(12.dp))
                                       }
-                                      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                          listOf("حلقه", "ذرات", "موج", "EQ", "کیهان", "نت", "Auto", "Mix", "Off").forEachIndexed { i, label ->
-                                              Chip(if (s.visualMode == i) "$label ✓" else label, p.a) {
-                                                  Sound.set { it.copy(visualMode = i) }
+                                      Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                          val visualLabels = listOf("حلقه", "ذرات", "موج", "EQ", "کیهان", "نت", "Auto", "Mix", "Off")
+                                          Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                              visualLabels.take(5).forEachIndexed { i, label ->
+                                                  Chip(if (s.visualMode == i) "$label ✓" else label, p.a) {
+                                                      Sound.set { it.copy(visualMode = i) }
+                                                  }
+                                              }
+                                          }
+                                          Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                              visualLabels.drop(5).forEachIndexed { j, label ->
+                                                  val i = j + 5
+                                                  Chip(if (s.visualMode == i) "$label ✓" else label, p.a) {
+                                                      Sound.set { it.copy(visualMode = i) }
+                                                  }
                                               }
                                           }
                                       }
