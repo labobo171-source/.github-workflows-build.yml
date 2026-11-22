@@ -168,7 +168,8 @@ jobs:
               val safe: Boolean = true,
               val motion: Boolean = true,
               val spectrum: Boolean = true,
-              val palette: Int = 0
+              val palette: Int = 0,
+              val visualMode: Int = 7
           )
 
           data class EngineInfo(
@@ -598,6 +599,86 @@ jobs:
                           size = Size(bw * 0.60f, hh),
                           cornerRadius = CornerRadius(bw * 0.30f, bw * 0.30f)
                       )
+                  }
+              }
+          }
+
+          @Composable
+          fun MusicVisualizer(p: Pal, s: SoundState, playing: Boolean, mode: Int, modifier: Modifier = Modifier) {
+              val tr = rememberInfiniteTransition(label = "music-visualizer")
+              val phase by tr.animateFloat(0f, 2f * PI.toFloat(),
+                  infiniteRepeatable(tween(6500, easing = LinearEasing), RepeatMode.Restart), label = "phase")
+              val points = remember { Random(53).let { r -> List(64) { Offset(r.nextFloat(), r.nextFloat()) } } }
+              if (mode == 8 || !s.motion || !playing) return
+              Canvas(modifier) {
+                  val w = size.width; val h = size.height
+                  val energy = (s.bass / 100f + s.treble / 100f + s.bands.average().toFloat() / 100f).coerceIn(-1f,1f)
+                  val pulse = (0.35f + (sin(phase * 2f) + 1f) * 0.22f + energy * 0.12f).coerceIn(0.12f,0.8f)
+                  val modes = if (mode == 6) ((phase / (2f * PI.toFloat()) * 6f).toInt().coerceIn(0,5)) else mode
+                  val drawRing = {
+                      for (i in 0 until 5) {
+                          val r = (minOf(w,h) * (0.15f + i * 0.09f) + sin(phase + i) * 6f).coerceAtLeast(4f)
+                          drawCircle(p.b.copy(alpha = pulse * (0.32f - i * 0.035f)), r, center, style = Stroke(2f + i % 2))
+                      }
+                  }
+                  val drawParticles = {
+                      points.forEachIndexed { i, pt ->
+                          val drift = phase * (0.12f + (i % 5) * 0.035f)
+                          val x = ((pt.x + sin(drift + i) * 0.04f + 1f) % 1f) * w
+                          val y = ((pt.y + drift * (if (i % 2 == 0) 1f else -1f) + 1f) % 1f) * h
+                          drawCircle(if (i % 3 == 0) p.a else p.b, 1.2f + (i % 4), Offset(x,y))
+                      }
+                  }
+                  val drawWaves = {
+                      for (line in 0..4) {
+                          val path = Path()
+                          val base = h * (0.25f + line * 0.14f)
+                          path.moveTo(0f,base)
+                          for (step in 0..64) {
+                              val x = w * step / 64f
+                              val y = base + sin(x / w * 4f * PI.toFloat() + phase + line * 0.7f) * (h * 0.08f + energy * 8f)
+                              path.lineTo(x,y)
+                          }
+                          drawPath(path,p.c.copy(alpha = 0.35f + pulse * 0.25f),style = Stroke(2.2f))
+                      }
+                  }
+                  val drawBars = {
+                      val n = 32; val bw = w / n
+                      for (i in 0 until n) {
+                          val hBar = h * (0.08f + ((sin(phase * 2f + i * 0.42f) + 1f) / 2f) * 0.52f
+                              + (s.bands.getOrElse(i % s.bands.size) / 100f).coerceIn(-0.06f,0.12f))
+                          drawRoundRect(p.a.copy(alpha = 0.45f), Offset(i*bw + bw*0.2f,h-hBar),
+                              Size(bw*0.6f,hBar), cornerRadius = CornerRadius(bw/2,bw/2))
+                      }
+                  }
+                  val drawSpiral = {
+                      val path = Path(); val cx=w/2f; val cy=h/2f; val maxR=minOf(w,h)*0.48f
+                      for (step in 0..260) {
+                          val a = step / 260f * 5f * PI.toFloat() + phase
+                          val r = step / 260f * maxR
+                          val x = cx + cos(a)*r; val y = cy + sin(a)*r
+                          if (step==0) path.moveTo(x,y) else path.lineTo(x,y)
+                      }
+                      drawPath(path,p.b.copy(alpha=0.6f),style=Stroke(2f))
+                  }
+                  val drawNotes = {
+                      points.take(18).forEachIndexed { i, pt ->
+                          val x = ((pt.x + sin(phase+i)*0.06f + 1f)%1f)*w
+                          val y = ((pt.y + phase*0.08f + 1f)%1f)*h
+                          val rad = 3f + i%4
+                          drawOval(p.c.copy(alpha=0.45f),Offset(x-rad,y-rad*0.7f),Size(rad*2,rad*1.4f))
+                          drawLine(p.c.copy(alpha=0.4f),Offset(x+rad,y),Offset(x+rad,y-rad*4f),1.5f)
+                      }
+                  }
+                  when (modes) {
+                      0 -> drawRing()
+                      1 -> drawParticles()
+                      2 -> drawWaves()
+                      3 -> drawBars()
+                      4 -> drawSpiral()
+                      5 -> drawNotes()
+                      7 -> { drawRing(); drawParticles(); drawWaves() }
+                      else -> { drawRing(); drawWaves() }
                   }
               }
           }
@@ -1148,6 +1229,7 @@ jobs:
 
               Box(Modifier.fillMaxSize()) {
                   Aurora(p, s.motion, Modifier.fillMaxSize())
+                  MusicVisualizer(p, s, playing, s.visualMode, Modifier.fillMaxSize())
 
                   if (!granted) {
                       Column(
@@ -1222,6 +1304,14 @@ jobs:
                                           Spectrum(p, s, info.freqs, playing, Modifier.fillMaxWidth().height(56.dp))
                                           Spacer(Modifier.height(12.dp))
                                       }
+                                      Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                          listOf("حلقه", "ذرات", "موج", "EQ", "کیهان", "نت", "Auto", "Mix", "Off").forEachIndexed { i, label ->
+                                              Chip(if (s.visualMode == i) "$label ✓" else label, p.a) {
+                                                  Sound.set { it.copy(visualMode = i) }
+                                              }
+                                          }
+                                      }
+                                      Spacer(Modifier.height(8.dp))
                                       Text(
                                           cur?.title ?: "یک آهنگ انتخاب کن",
                                           color = TextHi, fontSize = 19.sp, fontWeight = FontWeight.Bold,
