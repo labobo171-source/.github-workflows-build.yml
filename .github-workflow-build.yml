@@ -1141,6 +1141,11 @@ jobs:
           @Composable
           fun App(p: Pal, s: SoundState) {
               val ctx = LocalContext.current
+              val visualPrefs = remember { ctx.getSharedPreferences("music_visualizer", Context.MODE_PRIVATE) }
+              LaunchedEffect(Unit) {
+                  val saved = visualPrefs.getInt("mode", 7).coerceIn(0, 8)
+                  Sound.set { it.copy(visualMode = saved) }
+              }
               val info by Sound.info.collectAsState()
               val audioPerm = if (Build.VERSION.SDK_INT >= 33)
                   Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -1309,6 +1314,7 @@ jobs:
                                           Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                               visualLabels.take(5).forEachIndexed { i, label ->
                                                   Chip(if (s.visualMode == i) "$label ✓" else label, p.a) {
+                                                      visualPrefs.edit().putInt("mode", i).apply()
                                                       Sound.set { it.copy(visualMode = i) }
                                                   }
                                               }
